@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROEI CLICKER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Rubik:wght@400;600;800&family=STIX+Two+Text:ital,wght@1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FBFAF4;
+    --panel: #F3F1E6;
+    --grid: #CFE0EF;
+    --margin: #E0453A;
+    --ink: #1F3FA8;
+    --graphite: #33363D;
+    --soft: #6E7486;
+    --fill: #FFD84D;
+    --btn-shadow: #14287A;
+    --good: #1E8A4C;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #16233B; --panel: #1B2A45; --grid: #24375A; --margin: #FF6B5E;
+      --ink: #9DB6FF; --graphite: #E8ECF5; --soft: #93A0BC; --fill: #FFD84D;
+      --btn-shadow: #0A1328; --good: #5FD68F;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16233B; --panel: #1B2A45; --grid: #24375A; --margin: #FF6B5E;
+    --ink: #9DB6FF; --graphite: #E8ECF5; --soft: #93A0BC; --fill: #FFD84D;
+    --btn-shadow: #0A1328; --good: #5FD68F;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    color: var(--graphite);
+    font-family: "Rubik", "Arial Hebrew", Arial, sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr minmax(330px, 410px);
+  }
+
+  /* ---------- clicker side ---------- */
+  .play {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    justify-items: center;
+    padding: 18px 24px 22px;
+    min-height: 0;
+  }
+  .play::after { /* notebook margin line */
+    content: ""; position: absolute; top: 0; bottom: 0; right: 40px;
+    width: 2px; background: var(--margin); opacity: .7; pointer-events: none;
+  }
+  h1 {
+    margin: 0;
+    font-family: "Amatic SC", "Comic Sans MS", cursive;
+    font-size: clamp(3rem, 9vw, 5.5rem);
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: .04em;
+    direction: ltr;
+    transform: rotate(-2deg);
+  }
+  .stage { display: grid; place-items: center; align-content: center; gap: 26px; width: 100%; }
+  .bank { text-align: center; }
+  .bank-num {
+    font-weight: 800; font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .bank-sub { color: var(--soft); font-size: 1rem; margin-top: 2px; }
+  .bank-sub b { color: var(--good); font-weight: 600; }
+
+  #clicker {
+    position: relative;
+    width: clamp(170px, 34vw, 250px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 4px solid var(--btn-shadow);
+    background: var(--ink);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 10px 0 var(--btn-shadow);
+    transition: transform .06s, box-shadow .06s;
+    display: grid; place-items: center;
+    padding: 0;
+    touch-action: manipulation;
+  }
+  #clicker:active, #clicker.pressed { transform: translateY(8px); box-shadow: 0 2px 0 var(--btn-shadow); }
+  #clicker:focus-visible { outline: 4px dashed var(--margin); outline-offset: 10px; }
+  #clicker .sym {
+    font-family: "STIX Two Text", "Times New Roman", serif;
+    font-style: italic;
+    font-size: clamp(5rem, 17vw, 8rem);
+    line-height: 1; margin-top: -.15em;
+  }
+  #clicker .name {
+    position: absolute; bottom: 18%;
+    font-family: "Amatic SC", cursive;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    letter-spacing: .1em; direction: ltr;
+  }
+
+  .meter { width: min(520px, 100%); }
+  .meter-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 12px; }
+  .meter-title { font-weight: 800; font-size: 1.15rem; color: var(--ink); }
+  .meter-score { font-weight: 600; font-size: .95rem; color: var(--soft); font-variant-numeric: tabular-nums; }
+  .bar { position: relative; height: 28px; border: 3px solid var(--graphite); border-radius: 6px; background: var(--paper); overflow: hidden; }
+  .bar-fill { position: absolute; inset: 0 0 0 auto; width: 0%; background: var(--fill); transition: width .15s ease-out; }
+  .bar-ticks {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(90deg, var(--graphite) 2px, transparent 2px);
+    background-size: 10% 40%; background-repeat: repeat-x; background-position: 0 100%; opacity: .5;
+  }
+  .meter-level { margin-top: 8px; display: flex; justify-content: space-between; gap: 12px; font-size: .95rem; color: var(--soft); }
+  .meter-level strong { color: var(--graphite); font-weight: 600; }
+  .meter.levelup .bar { animation: pop .5s ease-out; }
+  .meter.levelup .meter-level strong { color: var(--margin); }
+  @keyframes pop { 30% { transform: scale(1.04); } }
+
+  /* ---------- shop side ---------- */
+  .shop {
+    display: flex; flex-direction: column; min-height: 0;
+    background: var(--panel);
+    border-inline-start: 3px solid var(--graphite);
+    position: relative; z-index: 2;
+  }
+  .shop-head { padding: 16px 16px 12px; border-bottom: 2px dashed var(--soft); }
+  .shop-head h2 {
+    margin: 0 0 10px; font-family: "Amatic SC", cursive; font-size: 2.4rem; line-height: 1; color: var(--ink);
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .seg { display: inline-flex; border: 2px solid var(--graphite); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    font: inherit; font-size: .9rem; font-weight: 600;
+    background: transparent; color: var(--graphite); border: 0; padding: 5px 12px; cursor: pointer;
+  }
+  .seg button + button { border-inline-start: 2px solid var(--graphite); }
+  .seg button[aria-pressed="true"] { background: var(--graphite); color: var(--panel); }
+  .seg button:focus-visible { outline: 3px solid var(--margin); outline-offset: -3px; }
+
+  .list { overflow-y: auto; padding: 10px 10px 18px; flex: 1; overscroll-behavior: contain; }
+  .item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 46px 1fr auto;
+    gap: 4px 12px; align-items: center;
+    text-align: start;
+    font: inherit; color: var(--graphite);
+    background: var(--paper);
+    border: 2px solid var(--graphite);
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 var(--graphite);
+    transition: transform .05s, box-shadow .05s, opacity .15s;
+  }
+  .item:not(:disabled):hover { background: color-mix(in srgb, var(--fill) 22%, var(--paper)); }
+  .item:not(:disabled):active { transform: translateY(3px); box-shadow: 0 0 0 var(--graphite); }
+  .item:focus-visible { outline: 3px solid var(--margin); outline-offset: 2px; }
+  .item:disabled { cursor: not-allowed; opacity: .5; }
+  .item .ico { font-size: 1.9rem; line-height: 1; text-align: center; grid-row: span 2; }
+  .item .nm { font-weight: 800; font-size: 1.02rem; direction: ltr; text-align: right; unicode-bidi: plaintext; }
+  .item .ds { grid-column: 2; font-size: .82rem; color: var(--soft); line-height: 1.35; }
+  .item .own {
+    grid-row: 1 / span 2; grid-column: 3;
+    font-family: "Amatic SC", cursive; font-size: 2.6rem; line-height: 1; color: var(--ink);
+    min-width: 1.4em; text-align: center; opacity: .85;
+  }
+  .item .meta { grid-column: 2 / span 2; display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+  .item .price { font-weight: 600; }
+  .item .price.cant { color: var(--margin); }
+  .item .cps { color: var(--good); }
+  .item.locked { cursor: default; box-shadow: none; border-style: dashed; opacity: .6; }
+  .item.locked .nm { letter-spacing: .2em; }
+
+  #reset {
+    margin: 0 auto 10px; display: block; background: none; border: none; padding: 6px;
+    font: inherit; font-size: .85rem; color: var(--soft); text-decoration: underline; cursor: pointer;
+  }
+  #reset:focus-visible { outline: 2px solid var(--ink); }
+
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+  .math { position: absolute; left: 0; top: 0; direction: ltr; white-space: nowrap;
+    font-family: "STIX Two Text", "Times New Roman", serif; font-style: italic; font-weight: 500;
+    will-change: transform, opacity; }
+  .math svg { display: block; overflow: visible; }
+  .plus { position: absolute; left: 0; top: 0; font-weight: 800; font-size: 1.4rem; color: var(--margin); direction: ltr; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    background: var(--graphite); color: var(--paper);
+    padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: .95rem;
+    z-index: 10; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ---------- mobile: stack, page scrolls ---------- */
+  @media (max-width: 820px) {
+    html, body { height: auto; }
+    body { overflow: auto; }
+    .app { height: auto; grid-template-columns: 1fr; }
+    .play { min-height: 82vh; min-height: 82svh; }
+    .shop { border-inline-start: 0; border-top: 3px solid var(--graphite); }
+    .list { overflow: visible; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bar-fill { transition: none; }
+    .meter.levelup .bar { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="play">
+    <h1>ROEI CLICKER</h1>
+    <div class="stage">
+      <div class="bank" aria-live="off">
+        <div class="bank-num"><span id="score">0</span> נקודות</div>
+        <div class="bank-sub"><b id="cps">0</b> נקודות לשנייה</div>
+      </div>
+      <button id="clicker" aria-label="לחיצה: הוספת נקודה">
+        <span class="sym" aria-hidden="true">∫</span>
+        <span class="name" aria-hidden="true">ROEI</span>
+      </button>
+    </div>
+    <section class="meter" id="meter">
+      <div class="meter-head">
+        <span class="meter-title">מד החדו״א</span>
+        <span class="meter-score">סה״כ נצברו <span id="total">0</span></span>
+      </div>
+      <div class="bar" role="progressbar" aria-label="התקדמות לרמה הבאה" aria-valuemin="0" aria-valuemax="100" id="bar">
+        <div class="bar-fill" id="fill"></div>
+        <div class="bar-ticks"></div>
+      </div>
+      <div class="meter-level">
+        <span>רמה: <strong id="level">—</strong></span>
+        <span id="next"></span>
+      </div>
+    </section>
+  </main>
+
+  <aside class="shop" aria-label="חנות השיפורים">
+    <div class="shop-head">
+      <h2>חנות השיפורים</h2>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="קנייה או מכירה">
+          <button data-mode="buy" aria-pressed="true">קנייה</button>
+          <button data-mode="sell" aria-pressed="false">מכירה</button>
+        </div>
+        <div class="seg" role="group" aria-label="כמות">
+          <button data-qty="1" aria-pressed="true">1</button>
+          <button data-qty="10" aria-pressed="false">10</button>
+          <button data-qty="100" aria-pressed="false">100</button>
+        </div>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+    <button id="reset">איפוס המשחק</button>
+  </aside>
+</div>
+<div id="fx" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  // ---------- data: the 20 buildings of Cookie Clicker (base cost / base CpS), renamed ----------
+  const B = [
+    ["ROEI Cursor",               15,      0.1,     "👆", "אצבע שלוחצת על הכפתור במקומך"],
+    ["ROEI Grandma",              100,     1,       "👵", "סבתא שפותרת תרגילים בקצב שלה"],
+    ["ROEI Farm",                 1100,    8,       "🌾", "חווה שמגדלת נגזרות בשורות ישרות"],
+    ["ROEI Mine",                 12000,   47,      "⛏️", "כורה מספרים ראשוניים מעומק האדמה"],
+    ["ROEI Factory",              130000,  260,     "🏭", "פס ייצור של אינטגרלים מסוימים"],
+    ["ROEI Bank",                 1.4e6,   1400,    "🏦", "ריבית דריבית על כל נקודה"],
+    ["ROEI Temple",               2e7,     7800,    "🛕", "מקדש שבו מתפללים לאוילר"],
+    ["ROEI Wizard Tower",         3.3e8,   44000,   "🧙", "קוסם שמעלים אינסופים מהמכנה"],
+    ["ROEI Shipment",             5.1e9,   2.6e5,   "🚀", "משלוחים של משוואות מכוכב אחר"],
+    ["ROEI Alchemy Lab",          7.5e10,  1.6e6,   "⚗️", "הופך שברים פשוטים לזהב"],
+    ["ROEI Portal",               1e12,    1e7,     "🌀", "שער למרחב וקטורי מקביל"],
+    ["ROEI Time Machine",         1.4e13,  6.5e7,   "⏳", "חוזר בזמן לפני מבחן הבגרות"],
+    ["ROEI Antimatter Condenser", 1.7e14,  4.3e8,   "⚛️", "דוחס מספרים שליליים לנקודות"],
+    ["ROEI Prism",                2.1e15,  2.9e9,   "🔺", "מפרק אור לטורי פורייה"],
+    ["ROEI Chancemaker",          2.6e16,  2.1e10,  "🍀", "מטה את ההסתברות לטובתך"],
+    ["ROEI Fractal Engine",       3.1e17,  1.5e11,  "❄️", "משכפל את עצמו בכל קנה מידה"],
+    ["ROEI Javascript Console",   7.1e19,  1.1e12,  "💻", "קוד שגוזר ומבצע אינטגרציה לבד"],
+    ["ROEI Idleverse",            1.2e22,  8.3e12,  "🌌", "יקומים שלמים שלוחצים בשבילך"],
+    ["ROEI Cortex Baker",         1.9e24,  6.4e13,  "🧠", "מוח ענק שחושב רק על חדו״א"],
+    ["ROEI You",                  5.4e26,  5.1e14,  "🪞", "עוד רועי. ועוד אחד. ועוד אחד."]
+  ].map(([name, base, cps, icon, desc]) => ({ name, base, cps, icon, desc }));
+
+  const LEVELS = [
+    [0, "סופר על האצבעות"], [10, "יודע מה זו פונקציה"], [50, "גוזר בלי מחשבון"],
+    [250, "מכיר את כלל השרשרת"], [1000, "אינטגרל בעיניים עצומות"], [1e4, "שובר גבולות"],
+    [1e5, "טורי טיילור מתוך שינה"], [1e6, "רועי ניוטון"], [1e8, "רועי לייבניץ"],
+    [1e10, "רועי אוילר"], [1e12, "רועי גאוס"], [1e15, "רועי רימן"],
+    [1e18, "רועי קנטור"], [1e21, "השערת רועי"], [1e24, "רועי האינסופי"], [1e27, "אגדת החדו״א"]
+  ];
+
+  const FORMULAS = [
+    "∫", "∑", "π", "∂", "∞", "√2", "∇f", "e", "Δx", "dx", "∮",
+    "e<sup>iπ</sup> + 1 = 0", "d/dx", "f′(x)", "lim<sub>x→0</sub> sin x / x = 1",
+    "sin²x + cos²x = 1", "∫ x dx = x²/2 + C", "(e<sup>x</sup>)′ = e<sup>x</sup>",
+    "∑ 1/n² = π²/6", "a² + b² = c²", "∫<sub>0</sub><sup>1</sup> x² dx = ⅓",
+    "x = (−b ± √Δ) / 2a", "(ln x)′ = 1/x", "∂f/∂y", "lim<sub>n→∞</sub> (1+1/n)<sup>n</sup> = e",
+    "dy/dx", "f″(x) &gt; 0", "∀ε &gt; 0 ∃δ", "φ = (1+√5)/2", "(fg)′ = f′g + fg′", "cos π = −1"
+  ];
+  const AX = '<path d="M-28 0H28M0 24V-24" stroke-width="1.6" opacity=".55"/>';
+  const SV = 'fill="none" stroke="currentColor" stroke-linecap="round"';
+  const GRAPHS = [
+    `<svg width="70" height="56" viewBox="-30 -26 60 52" ${SV}>${AX}<path stroke-width="2.6" d="M-28 0 C-23 -16 -16 -16 -12 0 S -2 16 2 0 S 12 -16 16 0 S 24 14 28 6"/></svg>`,
+    `<svg width="62" height="56" viewBox="-30 -26 60 52" ${SV}>${AX}<path stroke-width="2.6" d="M-20 -22 Q0 40 20 -22"/></svg>`,
+    `<svg width="60" height="60" viewBox="-28 -28 56 56" ${SV}>${AX}<circle r="18" stroke-width="2.4"/><path stroke-width="2.2" d="M0 0L13 -12.5"/><path stroke-width="1.6" d="M7 0A7 7 0 0 0 5 -4.8"/></svg>`,
+    `<svg width="62" height="56" viewBox="-30 -26 60 52" ${SV}>${AX}<path stroke-width="2.6" d="M-28 -1 C 0 -2 10 -6 18 -24"/></svg>`,
+    `<svg width="66" height="56" viewBox="-30 -26 60 52" ${SV}>${AX}<path stroke-width="2.6" d="M-24 14 Q0 -30 24 14"/><path stroke-width="1.8" stroke-dasharray="3 3" d="M-26 -8H26"/><circle cx="0" cy="-8" r="2.6" fill="currentColor"/></svg>`,
+    `<svg width="66" height="56" viewBox="-30 -26 60 52" ${SV}>${AX}<path d="M-14 0 V-8 Q0 -22 14 -12 V0Z" fill="currentColor" opacity=".25" stroke="none"/><path stroke-width="2.6" d="M-26 4 Q-14 -6 0 -16 T26 -10"/></svg>`,
+    `<svg width="58" height="50" viewBox="-26 -22 52 44" fill="none" stroke="currentColor" stroke-linejoin="round"><path stroke-width="2.6" d="M-20 16H20V-16Z"/><path stroke-width="1.6" d="M14 16V10H20"/></svg>`
+  ];
+  const COLORS = ["var(--ink)", "var(--margin)", "var(--graphite)"];
+
+  // ---------- state ----------
+  const KEY = "roei-clicker-v2";
+  let S = { score: 0, total: 0, owned: B.map(() => 0), seen: 0 };
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      S.score = +d.score || 0; S.total = +d.total || 0; S.seen = +d.seen || 0;
+      if (Array.isArray(d.owned)) S.owned = B.map((_, i) => +d.owned[i] || 0);
+    } else {
+      const old = parseInt(localStorage.getItem("roei-clicker-score"), 10) || 0;
+      S.score = old; S.total = old;
+    }
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  let mode = "buy", qty = 1;
+
+  // ---------- math ----------
+  const R = 1.15;
+  const price = i => Math.ceil(B[i].base * Math.pow(R, S.owned[i]));
+  const bulkCost = (i, n) => Math.ceil(B[i].base * Math.pow(R, S.owned[i]) * (Math.pow(R, n) - 1) / (R - 1));
+  const sellValue = (i, n) => {
+    n = Math.min(n, S.owned[i]); let v = 0;
+    for (let k = 0; k < n; k++) v += B[i].base * Math.pow(R, S.owned[i] - 1 - k) * 0.25;
+    return Math.floor(v);
+  };
+  const cps = () => B.reduce((s, b, i) => s + b.cps * S.owned[i], 0);
+
+  // ---------- number formatting ----------
+  const NAMES = [[1e30,"נוניליון"],[1e27,"אוקטיליון"],[1e24,"ספטיליון"],[1e21,"סקסטיליון"],[1e18,"קווינטיליון"],[1e15,"קוודריליון"],[1e12,"טריליון"],[1e9,"מיליארד"],[1e6,"מיליון"]];
+  function fmt(n, dec) {
+    if (!isFinite(n)) return "∞";
+    if (n < 1000) {
+      if (dec && n % 1 !== 0) return (Math.round(n * 10) / 10).toString();
+      return Math.floor(n).toString();
+    }
+    for (const [v, w] of NAMES) if (n >= v) return parseFloat((n / v).toFixed(3)) + " " + w;
+    return Math.floor(n).toLocaleString("en-US");
+  }
+
+  // ---------- DOM ----------
+  const $ = id => document.getElementById(id);
+  const btn = $("clicker"), fx = $("fx"), listEl = $("list"), toast = $("toast");
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function visibleCount() {
+    // a building is revealed once you own it or have earned half its base cost; the next one shows as ???
+    let v = 0;
+    B.forEach((b, i) => { if (S.owned[i] > 0 || S.total >= b.base * 0.5) v = i + 1; });
+    v = Math.max(v, S.seen, 1);
+    S.seen = v;
+    return v;
+  }
+
+  let rows = [], builtFor = -1;
+  function buildShop() {
+    const v = visibleCount();
+    if (v === builtFor) return;
+    builtFor = v;
+    listEl.innerHTML = "";
+    rows = [];
+    B.forEach((b, i) => {
+      if (i > v) return;
+      const el = document.createElement("button");
+      el.className = "item";
+      if (i === v) {
+        el.classList.add("locked");
+        el.disabled = true;
+        el.innerHTML = `<span class="ico">❔</span><span class="nm">ROEI ???</span><span class="own"></span>
+          <span class="ds">עוד לא נחשף</span><span class="meta"><span class="price">${fmt(b.base)}</span><span></span></span>`;
+        listEl.appendChild(el);
+        return;
+      }
+      el.innerHTML = `<span class="ico" aria-hidden="true">${b.icon}</span>
+        <span class="nm">${b.name}</span>
+        <span class="own"></span>
+        <span class="ds">${b.desc}</span>
+        <span class="meta"><span class="price"></span><span class="cps"></span></span>`;
+      el.addEventListener("click", () => act(i, el));
+      listEl.appendChild(el);
+      rows[i] = { el, own: el.querySelector(".own"), price: el.querySelector(".price"), cps: el.querySelector(".cps") };
+    });
+  }
+
+  function updateShop() {
+    buildShop();
+    rows.forEach((r, i) => {
+      if (!r) return;
+      const b = B[i];
+      r.own.textContent = S.owned[i] || "";
+      if (mode === "buy") {
+        const c = bulkCost(i, qty);
+        const can = S.score >= c;
+        r.price.textContent = `מחיר: ${fmt(c)}`;
+        r.price.classList.toggle("cant", !can);
+        r.el.disabled = !can;
+        r.el.setAttribute("aria-label", `לקנות ${qty} ${b.name} ב־${fmt(c)} נקודות. ברשותך ${S.owned[i]}`);
+      } else {
+        const n = Math.min(qty, S.owned[i]);
+        r.price.textContent = n ? `החזר: ${fmt(sellValue(i, qty))}` : "אין מה למכור";
+        r.price.classList.remove("cant");
+        r.el.disabled = n === 0;
+        r.el.setAttribute("aria-label", `למכור ${n} ${b.name}`);
+      }
+      const each = b.cps;
+      r.cps.textContent = S.owned[i]
+        ? `+${fmt(each * S.owned[i], true)}/שנ׳`
+        : `+${fmt(each, true)}/שנ׳ ליחידה`;
+    });
+  }
+
+  function act(i, el) {
+    if (mode === "buy") {
+      const c = bulkCost(i, qty);
+      if (S.score < c) return;
+      S.score -= c;
+      S.owned[i] += qty;
+      showToast(`נקנו ${qty} × ${B[i].name}`);
+      const r = el.getBoundingClientRect();
+      for (let k = 0; k < Math.min(qty, 6); k++) spawnAt(r.left + r.width / 2, r.top + r.height / 2, 0.7, true);
+    } else {
+      const n = Math.min(qty, S.owned[i]);
+      if (!n) return;
+      const v = sellValue(i, qty);
+      S.score += v;
+      S.owned[i] -= n;
+      showToast(`נמכרו ${n} × ${B[i].name}`);
+    }
+    save();
+    renderAll();
+  }
+
+  let toastT;
+  function showToast(t) {
+    toast.textContent = t;
+    toast.classList.add("show");
+    clearTimeout(toastT);
+    toastT = setTimeout(() => toast.classList.remove("show"), 1400);
+  }
+
+  document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll("[data-mode]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    updateShop();
+  }));
+  document.querySelectorAll("[data-qty]").forEach(b => b.addEventListener("click", () => {
+    qty = +b.dataset.qty;
+    document.querySelectorAll("[data-qty]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    updateShop();
+  }));
+
+  // ---------- meter ----------
+  const levelIndex = s => { let i = 0; LEVELS.forEach(([t], k) => { if (s >= t) i = k; }); return i; };
+  let lastLevel = levelIndex(S.total);
+  function renderMeter(anim) {
+    $("total").textContent = fmt(S.total);
+    const i = levelIndex(S.total);
+    $("level").textContent = LEVELS[i][1];
+    let pct;
+    if (i === LEVELS.length - 1) { pct = 100; $("next").textContent = "הגעת לפסגה"; }
+    else {
+      const lo = LEVELS[i][0], hi = LEVELS[i + 1][0];
+      pct = Math.min(100, ((S.total - lo) / (hi - lo)) * 100);
+      $("next").textContent = `עוד ${fmt(hi - S.total)} לרמה הבאה`;
+    }
+    $("fill").style.width = pct + "%";
+    $("bar").setAttribute("aria-valuenow", Math.round(pct));
+    if (anim && i > lastLevel) {
+      const m = $("meter");
+      m.classList.remove("levelup"); void m.offsetWidth; m.classList.add("levelup");
+      setTimeout(() => m.classList.remove("levelup"), 1200);
+      burst(14);
+      showToast(`רמה חדשה: ${LEVELS[i][1]}`);
+    }
+    lastLevel = i;
+  }
+
+  function renderAll() {
+    $("score").textContent = fmt(S.score);
+    $("cps").textContent = fmt(cps(), true);
+    renderMeter(true);
+    updateShop();
+  }
+
+  // ---------- particles ----------
+  const particles = [];
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+
+  function spawnAt(cx, cy, scale = 1, small = false) {
+    const el = document.createElement("div");
+    el.className = "math";
+    if (Math.random() < 0.3) el.innerHTML = pick(GRAPHS);
+    else { el.innerHTML = pick(FORMULAS); el.style.fontSize = rand(1.3, 2.6) * scale + "rem"; }
+    if (small) el.style.scale = scale;
+    el.style.color = pick(COLORS);
+    fx.appendChild(el);
+    const a = rand(-Math.PI * 0.85, -Math.PI * 0.15), sp = rand(9, 16) * (small ? 0.7 : 1);
+    particles.push({ el, x: cx + rand(-30, 30), y: cy + rand(-20, 10), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      rot: rand(-20, 20), vr: rand(-6, 6), life: 0, max: reduceMotion ? 40 : rand(80, 120), measured: false });
+    if (particles.length > 100) particles.shift().el.remove();
+    ensureLoop();
+  }
+  function spawn(scale, small) {
+    const r = btn.getBoundingClientRect();
+    spawnAt(r.left + r.width / 2, r.top + r.height / 2, scale, small);
+  }
+  function plusOne() {
+    const r = btn.getBoundingClientRect();
+    const el = document.createElement("div");
+    el.className = "plus"; el.textContent = "+1";
+    fx.appendChild(el);
+    particles.push({ el, x: r.left + r.width / 2 + rand(-40, 40), y: r.top - 6, vx: 0, vy: -2.2,
+      rot: 0, vr: 0, life: 0, max: 45, plus: true, measured: false });
+  }
+  const burst = n => { for (let k = 0; k < n; k++) spawn(); };
+
+  let running = false;
+  function tick() {
+    const H = innerHeight;
+    for (let k = particles.length - 1; k >= 0; k--) {
+      const p = particles[k];
+      if (!p.measured) { p.w = p.el.offsetWidth; p.h = p.el.offsetHeight; p.measured = true; }
+      p.life++;
+      if (!p.plus) p.vy += 0.32;
+      if (!reduceMotion || p.plus) { p.x += p.vx; p.y += p.vy; p.rot += p.vr; }
+      const t = p.life / p.max;
+      p.el.style.opacity = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
+      p.el.style.transform = `translate(${p.x - p.w / 2}px, ${p.y - p.h / 2}px) rotate(${p.rot}deg)`;
+      if (p.life >= p.max || p.y > H + 120) { p.el.remove(); particles.splice(k, 1); }
+    }
+    if (particles.length) requestAnimationFrame(tick); else running = false;
+  }
+  function ensureLoop() { if (!running) { running = true; requestAnimationFrame(tick); } }
+
+  // ---------- clicking ----------
+  function click() {
+    S.score += 1; S.total += 1;
+    spawn();
+    if (Math.random() < 0.35) spawn();
+    plusOne();
+    $("score").textContent = fmt(S.score);
+    renderMeter(true);
+    updateShop();
+  }
+  btn.addEventListener("pointerdown", e => { e.preventDefault(); btn.classList.add("pressed"); click(); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => btn.addEventListener(ev, () => btn.classList.remove("pressed")));
+  btn.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); if (e.repeat) return;
+      btn.classList.add("pressed"); click();
+    }
+  });
+  btn.addEventListener("keyup", () => btn.classList.remove("pressed"));
+
+  // ---------- passive production ----------
+  let last = performance.now(), uiAcc = 0, saveAcc = 0, fxAcc = 0;
+  function loop(now) {
+    const dt = Math.min((now - last) / 1000, 1);
+    last = now;
+    const c = cps();
+    if (c > 0) {
+      const gain = c * dt;
+      S.score += gain; S.total += gain;
+      fxAcc += dt;
+      if (!reduceMotion && fxAcc > Math.max(0.35, 2.2 - Math.log10(c + 1) * 0.35)) {
+        fxAcc = 0; spawn(0.6, true);
+      }
+    }
+    uiAcc += dt; saveAcc += dt;
+    if (uiAcc > 0.1) { uiAcc = 0; renderAll(); }
+    if (saveAcc > 3) { saveAcc = 0; save(); }
+    requestAnimationFrame(loop);
+  }
+  // catch up when the tab was hidden
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hiddenAt = Date.now(); save(); }
+    else if (hiddenAt) {
+      const away = (Date.now() - hiddenAt) / 1000, g = cps() * away;
+      S.score += g; S.total += g; hiddenAt = 0; last = performance.now();
+      if (g >= 1) showToast(`בזמן שלא היית: +${fmt(g)} נקודות`);
+      renderAll();
+    }
+  });
+  $("reset").addEventListener("click", () => {
+    if (!confirm("לאפס את כל הנקודות והשיפורים?")) return;
+    S = { score: 0, total: 0, owned: B.map(() => 0), seen: 0 };
+    builtFor = -1; lastLevel = 0; save(); renderAll();
+  });
+  addEventListener("pagehide", save);
+
+  renderAll();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
